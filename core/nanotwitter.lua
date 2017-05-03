@@ -1,51 +1,95 @@
+require "core.ui"
+
 module("nanotwitter", package.seeall)
 
-local OAuth = require "OAuth"
+local twitter = require "luatwit"
+local util = require "luatwit.util"
+local client
+local stream
 
-local f = io.open(".nanotter", "rb")
+function init()
+	local f = io.open(".nanotter", "rt")
 	
-if f then
-	token = {}
-	token.OAuthToken = f:lines()()
-	token.OAuthTokenSecret = f:lines()()
+	local token = {}
+	
+	token.consumer_key = "Brbukpk7aHle3rIbSlpTvvleU"
+	token.consumer_secret = "PcoimOIhAhwHVK3SZ0NlSifX8PLjBcLT90FnKaiL5vgzVHG1hK"
+	
+	if f then
+		token.oauth_token = f:lines()()
+		token.oauth_token_secret = f:lines()()
+		
+		f:close()
+	end
+
+	client = twitter.api.new(token)
+
+	if not f then
+		assert(client:oauth_request_token())
+
+		local pin = ui.pin_window(client:oauth_authorize_url())
+		
+		local token = assert(client:oauth_access_token{ oauth_verifier = pin })
+
+		f = io.open(".nanotter", "wt")
+		
+		f:write(token.oauth_token..'\n')
+		f:write(token.oauth_token_secret)
+	end
+	
+	stream = client:stream_user{ _async = true }
 end
 
-local client = OAuth.new("Brbukpk7aHle3rIbSlpTvvleU", "PcoimOIhAhwHVK3SZ0NlSifX8PLjBcLT90FnKaiL5vgzVHG1hK", {
-	RequestToken = "https://api.twitter.com/oauth/request_token", 
-	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
-	AccessToken = "https://api.twitter.com/oauth/access_token"
-}, token)
-
-if not f then
-	local callback_url = "oob"
-	local values = client:RequestToken({ oauth_callback = callback_url })
-	local oauth_token = values.oauth_token
-	local oauth_token_secret = values.oauth_token_secret
-
-	local tracking_code = "10090" --ておくれ(10 0 9 0)
-	local new_url = client:BuildAuthorizationUrl({ oauth_callback = callback_url, state = tracking_code })
-
-	print("認証の必要があります\n以下のURLにアクセスして認証をしてください。\n")
-	print(new_url)
-	print("\n認証が終わったらPINの入力をしてください\nPIN ? ")
-
-	local oauth_verifier = assert(io.read("*n"))
-	oauth_verifier = tostring(oauth_verifier)
+function stream_recieve()
+	while stream:is_active() do
+	 	client.http:wait(10)
+	 	
+	 	ui.precess_event()
 	
-	client = OAuth.new("Brbukpk7aHle3rIbSlpTvvleU", "PcoimOIhAhwHVK3SZ0NlSifX8PLjBcLT90FnKaiL5vgzVHG1hK", {
-	RequestToken = "https://api.twitter.com/oauth/request_token", 
-	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
-	AccessToken = "https://api.twitter.com/oauth/access_token"
-	}, {
-		OAuthToken = oauth_token,
-		OAuthVerifier = oauth_verifier
-	})
-	client:SetTokenSecret(oauth_token_secret)
-	
-	local values, err, headers, status, body = client:GetAccessToken()
+		-- iterate over the received items
+		for data in stream:iter() do
+		    local t_data = util.type(data)
+		    -- tweet
+		    if t_data == "tweet" then
+		        if data.text then ui.append_tweet(nil,data) end
+		    -- deleted tweet
+		    elseif t_data == "tweet_deleted" then
+		        ui.remove_tweet(nil,data)
+		    -- stream events (blocks, favs, follows, list operations, profile updates)
+		    elseif t_data == "stream_event" then
+		        local desc = ""
+		        local t_obj = util.type(data.target_object)
+		        if t_obj == "tweet" then
+		            ui.append_tweet(nil,data)
+		        end
+		        print("[%s] %s -> %s %s", data.event, data.source.screen_name, data.target.screen_name, desc)
+		    -- list of following user ids
+		    elseif t_data == "friend_list_str" then
+		        print("[friend list] (%s users)", #data.friends_str)
+		    -- number sent when the option delimited = "length" is set
+		    elseif t_data == "number" then
+		        print("[size delimiter] " .. data)
+		    -- everything else
+		    else
+		        printf("[%s] %s", t_data, pretty.write(data))
+		    end
+		end
+	end
 end
 
-function update_status(string_status)
-	local response_code, response_headers, response_status_line, response_body = 
-		client:PerformRequest("POST", "https://api.twitter.com/1.1/statuses/update.json", {status = string_status})
+function native_context()
+	return client
+end
+
+function timeline_update()
+	local tl, err = client:get_home_timeline()
+	assert(tl, tostring(err))
+	
+	for i = #tl, 1, -1 do
+		ui.append_tweet(nil,tl[i])
+	end
+end
+
+function tweet(string_status)
+	client:tweet { status = string_status }
 end
