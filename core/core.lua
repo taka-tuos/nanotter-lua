@@ -22,7 +22,7 @@ end
 function boot()
 	client.init()
 	
-	ui.init(client.native_context(),app)
+	ui.init(client.native_context(),client,app)
 	
 	app:run()
 end

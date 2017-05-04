@@ -41,7 +41,7 @@ function init()
 end
 
 function stream_recieve()
-	while stream:is_active() do
+	while stream:is_active() and ui.is_alive() do
 	 	client.http:wait(10)
 	 	
 	 	ui.precess_event()
@@ -60,7 +60,7 @@ function stream_recieve()
 		        local desc = ""
 		        local t_obj = util.type(data.target_object)
 		        if t_obj == "tweet" then
-		            ui.append_tweet(nil,data)
+		            if data.text then ui.append_tweet(nil,data) end
 		        end
 		        print("[%s] %s -> %s %s", data.event, data.source.screen_name, data.target.screen_name, desc)
 		    -- list of following user ids
