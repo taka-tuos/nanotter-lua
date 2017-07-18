@@ -227,12 +227,12 @@ end
 
 function build_tweet_menu(tweet)
     local menu = Gtk.Menu{
-        Gtk.MenuItem{ id = "reply", label = "Reply" },
-        Gtk.MenuItem{ id = "fav", label = tweet.favorited and "Un-favorite" or "Favorite" },
-        Gtk.MenuItem{ id = "rt", label = "Retweet" },
+        Gtk.MenuItem{ id = "reply", label = "返信" },
+        Gtk.MenuItem{ id = "fav", label = tweet.favorited and "あんふぁぼ" or "ふぁぼふぁぼする" },
+        Gtk.MenuItem{ id = "rt", label = "リツイートする" },
         Gtk.SeparatorMenuItem(),
-        Gtk.MenuItem{ id = "copy", label = "Copy text" },
-        Gtk.MenuItem{ id = "dump", label = "Copy raw data" },
+        Gtk.MenuItem{ id = "copy", label = "本文をコピー" },
+        Gtk.MenuItem{ id = "dump", label = "JSONをコピー" },
     }
 
     function menu.child.reply.on_activate()
@@ -286,9 +286,9 @@ function parse_tweet(tweet, text_only)
     if tweet.retweeted_status then
         if not text_only then
             header[1] = "🔃"
-            local f = "retweeted by @" .. tweet.user.screen_name
+            local f = "@" .. tweet.user.screen_name .. "(" .. tweet.user.name .. ")" .." がリツイート"
             if tweet.retweet_count > 1 then
-                f = f .. " and " .. tweet.retweet_count .. " others"
+                f = f .. " その他 " .. tweet.retweet_count .. " 人がリツイート"
             end
             footer[1] = f
         end
@@ -303,7 +303,7 @@ function parse_tweet(tweet, text_only)
     end
     header[#header + 1] = '<span color="gray">' .. escape_amp(tweet.user.name) .. '</span>'
     if tweet.in_reply_to_screen_name then
-        footer[#footer + 1] = "in reply to @" .. tweet.in_reply_to_screen_name
+        footer[#footer + 1] = "@" .. tweet.in_reply_to_screen_name .. " への返信"
     end
     footer[#footer + 1] = "via " .. tweet.source:gsub('rel=".*"', '') 
     return table.concat(header, " "),

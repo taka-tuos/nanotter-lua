@@ -62,16 +62,16 @@ function stream_recieve()
 		        if t_obj == "tweet" then
 		            if data.text then ui.append_tweet(nil,data) end
 		        end
-		        print("[%s] %s -> %s %s", data.event, data.source.screen_name, data.target.screen_name, desc)
+		        print(string.format("[%s] %s -> %s %s", data.event, data.source.screen_name, data.target.screen_name, desc))
 		    -- list of following user ids
 		    elseif t_data == "friend_list_str" then
-		        print("[friend list] (%s users)", #data.friends_str)
+		        print(string.format("[friend list] (%d users)", #data.friends_str))
 		    -- number sent when the option delimited = "length" is set
 		    elseif t_data == "number" then
 		        print("[size delimiter] " .. data)
 		    -- everything else
 		    else
-		        printf("[%s] %s", t_data, pretty.write(data))
+		        printf(string.format("[%s] %s", t_data, pretty.write(data)))
 		    end
 		end
 	end
