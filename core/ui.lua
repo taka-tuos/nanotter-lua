@@ -287,8 +287,8 @@ function parse_tweet(tweet, text_only)
         if not text_only then
             header[1] = "🔃"
             local f = "@" .. tweet.user.screen_name .. "(" .. tweet.user.name .. ")" .." がリツイート"
-            if tweet.retweet_count > 1 then
-                f = f .. " その他 " .. tweet.retweet_count .. " 人がリツイート"
+            if tweet.retweeted_status.retweet_count > 1 then
+                f = f .. " その他 " .. tweet.retweeted_status.retweet_count .. " 人がリツイート"
             end
             footer[1] = f
         end
