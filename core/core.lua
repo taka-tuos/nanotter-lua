@@ -1,8 +1,6 @@
-require "core.nanotwitter"
-require "core.ui"
-require "core.thread"
+require "lfs"
 
-require "alarm"
+require "core.pluagin"
 
 module("core", package.seeall)
 
@@ -10,24 +8,18 @@ local lgi = require 'lgi'
 local Gtk = lgi.require('Gtk', '3.0')
 local GLib = lgi.require('GLib', '2.0')
 
-local client = _G["nanotwitter"]
-
 local app = Gtk.Application { application_id = 'org.kagura.nanotter' }
 
-function timer_handler()
-	io.write("TIMEOUT")
-	client.stream_recieve()
-end
+local spawn_table
 
 function boot()
-	client.init()
+	Pluagin:load_all()
 	
-	ui.init(client.native_context(),client,app)
+	spawn_table = Pluagin:notify_listeners("spawn", app)
 	
 	app:run()
 end
 
 function app:on_activate()
-	client.timeline_update()
-	client.stream_recieve()
+	Pluagin:notify_listeners("on_activate")
 end

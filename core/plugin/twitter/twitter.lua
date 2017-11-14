@@ -1,13 +1,21 @@
-require "core.ui"
+--require "core.plugin.ui"
+--require "core.pluagin"
 
-module("nanotwitter", package.seeall)
+module("twitter", package.seeall)
+
+function register()
+	Pluagin:add_listener("spawn", initialize)
+	Pluagin:add_listener("on_activate", on_activate)
+	Pluagin:add_listener("native_context", native_context)
+	Pluagin:add_listener("post_message", tweet)
+end
 
 local twitter = require "luatwit"
 local util = require "luatwit.util"
 local client
 local stream
 
-function init()
+function initialize()
 	local f = io.open(".nanotter", "rt")
 	
 	local token = {}
@@ -27,7 +35,7 @@ function init()
 	if not f then
 		assert(client:oauth_request_token())
 
-		local pin = ui.pin_window(client:oauth_authorize_url())
+		local pin = Pluagin:notify_listeners("oauth_window", client:oauth_authorize_url())["text"]
 		
 		local token = assert(client:oauth_access_token{ oauth_verifier = pin })
 
@@ -40,27 +48,27 @@ function init()
 	stream = client:stream_user{ _async = true }
 end
 
-function stream_recieve()
-	while stream:is_active() and ui.is_alive() do
+function recieve_stream()
+	while stream:is_active() and Pluagin:notify_listeners("is_alive")["is_alive"] do
 	 	client.http:wait(10)
 	 	
-	 	ui.precess_event()
+	 	Pluagin:notify_listeners("precess_event")
 	
 		-- iterate over the received items
 		for data in stream:iter() do
 		    local t_data = util.type(data)
 		    -- tweet
 		    if t_data == "tweet" then
-		        if data.text then ui.append_tweet(nil,data) end
+		        if data.text then Pluagin:notify_listeners("append_tweet",nil,data) end
 		    -- deleted tweet
 		    elseif t_data == "tweet_deleted" then
-		        ui.remove_tweet(nil,data)
+		        Pluagin:notify_listeners("remove_tweet",nil,data)
 		    -- stream events (blocks, favs, follows, list operations, profile updates)
 		    elseif t_data == "stream_event" then
 		        local desc = ""
 		        local t_obj = util.type(data.target_object)
 		        if t_obj == "tweet" then
-		            if data.text then ui.append_tweet(nil,data) end
+		            if data.text then Pluagin:notify_listeners("append_tweet",nil,data) end
 		        end
 		        print(string.format("[%s] %s -> %s %s", data.event, data.source.screen_name, data.target.screen_name, desc))
 		    -- list of following user ids
@@ -77,17 +85,23 @@ function stream_recieve()
 	end
 end
 
-function native_context()
-	return client
-end
-
-function timeline_update()
+function update_timeline()
 	local tl, err = client:get_home_timeline()
 	assert(tl, tostring(err))
 	
 	for i = #tl, 1, -1 do
-		ui.append_tweet(nil,tl[i])
+		Pluagin:notify_listeners("append_tweet",nil,tl[i]) 
 	end
+end
+
+
+function native_context()
+	return client, "client"
+end
+
+function on_activate()
+	update_timeline()
+	recieve_stream()
 end
 
 function tweet(string_status)

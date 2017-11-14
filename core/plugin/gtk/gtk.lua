@@ -1,4 +1,13 @@
-module("ui", package.seeall)
+module("gtk", package.seeall)
+
+function register()
+	Pluagin:add_listener("spawn", initialize)
+	Pluagin:add_listener("oauth_window", pin_window)
+	Pluagin:add_listener("append_tweet", append_tweet)
+	Pluagin:add_listener("remove_tweet", remove_tweet)
+	Pluagin:add_listener("precess_event", precess_event)
+	Pluagin:add_listener("is_alive", is_alive)
+end
 
 local lgi = require 'lgi'
 local Gtk = lgi.require('Gtk', '3.0')
@@ -15,14 +24,14 @@ local lstFavs
 local alive = true
 
 function is_alive()
-	return alive
+	return alive, "is_alive"
 end
 
 function kill()
 	alive = false
 end
 
-function init(ctxA,ctxB,app)
+function initialize(app)
 	local window = Gtk.Window {
 		application = app,
 		title = 'nanotter',
@@ -67,17 +76,17 @@ function init(ctxA,ctxB,app)
 	window:add(vbox)
 	
 	window:show_all()
-	
-	client = ctxA
-	module_twitter = ctxB
 end
 
 function tweetbox_send()
 	local starts = Gtk.TextIter()
 	local ends = Gtk.TextIter()
 	starts,ends = tweetbox:get_buffer():get_bounds()
-	module_twitter.tweet(tweetbox:get_buffer():get_text(starts,ends))
-	tweetbox:get_buffer():set_text(starts,ends,"")
+	Pluagin:notify_listeners("post_message", tweetbox:get_buffer():get_text(starts,ends))
+	--module_twitter.tweet(tweetbox:get_buffer():get_text(starts,ends))
+	local buffer = tweetbox:get_buffer()
+	buffer:set_text(starts,ends,"")
+	tweetbox:set_buffer(buffer)
 end
 
 function pin_window(tokenuri)
@@ -187,7 +196,8 @@ function request_avatar(item, user)
         return true
     end
     
-    local retA,retB = client:http_request{ url = url, _async = false }
+    
+    local retA,retB = Pluagin:notify_listeners("native_context").client:http_request{ url = url, _async = false }
     
     request_callback(retA,retB)
 end
